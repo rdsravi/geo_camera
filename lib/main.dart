@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geo_camera/gallery_page.dart';
 import 'camera_page.dart';
 import 'splash_screen.dart';
 import 'login_page.dart';
@@ -22,6 +23,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginPage(),
         '/home': (context) => HomePage(),
         '/camera': (context) => CameraPage(), // Implement this if you want a separate camera page
+        '/gallery': (context) => GalleryPage(),
       },
     );
   }

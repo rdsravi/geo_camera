@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CameraPage extends StatefulWidget {
   @override
@@ -12,16 +15,17 @@ class _CameraPageState extends State<CameraPage> {
   late Future<void> _initializeControllerFuture;
   late List<CameraDescription> cameras;
   CameraDescription? selectedCamera;
+  List<String> _imagePaths = [];
 
   @override
   void initState() {
     super.initState();
     _initCamera();
+    _loadSavedImages();
   }
 
   // Initialize the camera
   Future<void> _initCamera() async {
-    // Get available cameras
     cameras = await availableCameras();
     selectedCamera = cameras.first;
 
@@ -32,6 +36,35 @@ class _CameraPageState extends State<CameraPage> {
 
     _initializeControllerFuture = _controller.initialize();
     setState(() {});
+  }
+
+  // Load saved images from shared preferences
+  Future<void> _loadSavedImages() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _imagePaths = prefs.getStringList('imagePaths') ?? [];
+    });
+  }
+
+  // Save the image paths to shared preferences
+  Future<void> _saveImagePath(String imagePath) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _imagePaths.add(imagePath);
+    await prefs.setStringList('imagePaths', _imagePaths);
+  }
+
+  // Function to store image in device storage
+  Future<String> _saveImageToDevice(String imagePath) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      String newPath = path.join(directory.path, '${DateTime.now()}.png');
+      File newImage = await File(imagePath).copy(newPath);
+      await _saveImagePath(newImage.path);  // Save the image path
+      return newImage.path;
+    } catch (e) {
+      print("Error saving image: $e");
+      return '';
+    }
   }
 
   @override
@@ -48,10 +81,8 @@ class _CameraPageState extends State<CameraPage> {
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            // Display the camera preview
             return CameraPreview(_controller);
           } else {
-            // Display a loading indicator until the camera is ready
             return const Center(child: CircularProgressIndicator());
           }
         },
@@ -59,21 +90,19 @@ class _CameraPageState extends State<CameraPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           try {
-            // Ensure that the camera is initialized
             await _initializeControllerFuture;
-
-            // Take the picture
             final image = await _controller.takePicture();
+            String savedImagePath = await _saveImageToDevice(image.path);
 
-            // If the picture was taken, navigate to the DisplayPictureScreen
-            if (!mounted) return;
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => DisplayPictureScreen(imagePath: image.path),
-              ),
-            );
+            if (savedImagePath.isNotEmpty) {
+              if (!mounted) return;
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => DisplayPictureScreen(imagePath: savedImagePath),
+                ),
+              );
+            }
           } catch (e) {
-            // If an error occurs, log the error to the console
             print(e);
           }
         },

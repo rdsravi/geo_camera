@@ -4,98 +4,99 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Home Page')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      appBar: AppBar(
+        title: Text('Home Page'),
+        backgroundColor: Colors.deepPurpleAccent,
+        elevation: 0,
+      ),
+      body: PageView(
+        scrollDirection: Axis.vertical, // Makes the containers scroll vertically
+        children: [
+          // Camera Button
+          buildContainer(
+            context,
+            onTap: () {
+              Navigator.of(context).pushNamed('/camera');
+            },
+            icon: Icons.camera_alt,
+            title: 'Camera',
+            gradientColors: [Colors.blueAccent, Colors.lightBlue],
+          ),
+          // Attendance Button
+          buildContainer(
+            context,
+            onTap: () {
+              Navigator.of(context).pushNamed('/attendance');
+            },
+            icon: Icons.assignment_turned_in,
+            title: 'Attendance',
+            gradientColors: [Colors.greenAccent, Colors.green],
+          ),
+          // Leave Button
+          buildContainer(
+            context,
+            onTap: () {
+              Navigator.of(context).pushNamed('/leave');
+            },
+            icon: Icons.date_range,
+            title: 'Leave',
+            gradientColors: [Colors.redAccent, Colors.deepOrange],
+          ),
+          // Gallery Button
+          buildContainer(
+            context,
+            onTap: () {
+              Navigator.of(context).pushNamed('/gallery');
+            },
+            icon: Icons.photo_library,
+            title: 'Gallery',
+            gradientColors: [Colors.purpleAccent, Colors.deepPurple],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper function to build the container with consistent design
+  Widget buildContainer(
+      BuildContext context, {
+        required VoidCallback onTap,
+        required IconData icon,
+        required String title,
+        required List<Color> gradientColors,
+      }) {
+    return InkWell(
+      onTap: onTap,
+      splashColor: gradientColors[0].withOpacity(0.4),
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: gradientColors[0].withOpacity(0.5),
+              spreadRadius: 5,
+              blurRadius: 15,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pushNamed('/camera');
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.blueAccent,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.5),
-                        spreadRadius: 3,
-                        blurRadius: 7,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.camera_alt, size: 64, color: Colors.white),
-                      SizedBox(height: 8),
-                      Text('Camera', style: TextStyle(color: Colors.white, fontSize: 24)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  // Attendance functionality here
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.withOpacity(0.5),
-                        spreadRadius: 3,
-                        blurRadius: 7,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.assignment_turned_in, size: 64, color: Colors.white),
-                      SizedBox(height: 8),
-                      Text('Attendance', style: TextStyle(color: Colors.white, fontSize: 24)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  // Leave functionality here
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.5),
-                        spreadRadius: 3,
-                        blurRadius: 7,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.date_range, size: 64, color: Colors.white),
-                      SizedBox(height: 8),
-                      Text('Leave', style: TextStyle(color: Colors.white, fontSize: 24)),
-                    ],
-                  ),
-                ),
+            Icon(icon, size: 80, color: Colors.white),
+            SizedBox(height: 20),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
