@@ -9,6 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart'; // Add geocoding package
 import 'package:flutter/rendering.dart';
+import 'package:share_plus/share_plus.dart'; // Add this for sharing images
+import 'package:cross_file/cross_file.dart';  // Required for XFile
+
 
 class CameraPage extends StatefulWidget {
   @override
@@ -24,6 +27,7 @@ class _CameraPageState extends State<CameraPage> {
   GlobalKey _imageKey = GlobalKey(); // Global key to capture the image with overlay
   Position? _currentPosition;
   String _locationMessage = "Fetching location...";
+  String? _lastCapturedImagePath;
 
   @override
   void initState() {
@@ -126,6 +130,10 @@ class _CameraPageState extends State<CameraPage> {
 
       // Save the new image path
       await _saveImagePath(newPath);
+      setState(() {
+        _lastCapturedImagePath = newPath;
+      });
+
       return newPath;
     } catch (e) {
       print("Error saving image: $e");
@@ -175,33 +183,68 @@ class _CameraPageState extends State<CameraPage> {
                     ),
                   ),
                 ),
+                Positioned(
+                  bottom: 20,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Gallery Icon
+                      IconButton(
+                        icon: Icon(Icons.photo, size: 40, color: Colors.white),
+                        onPressed: () {
+                          // Open gallery (You need to implement the gallery navigation)
+                          print("Gallery icon pressed");
+                        },
+                      ),
+                      SizedBox(width: 40), // Spacer between icons
+
+                      // Camera Icon
+                      FloatingActionButton(
+                        onPressed: () async {
+                          try {
+                            await _initializeControllerFuture;
+                            final image = await _controller.takePicture();
+                            String savedImagePath = await _saveImageWithOverlay(image.path);
+
+                            if (savedImagePath.isNotEmpty) {
+                              if (!mounted) return;
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => DisplayPictureScreen(imagePath: savedImagePath),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            print(e);
+                          }
+                        },
+                        child: const Icon(Icons.camera_alt),
+                      ),
+
+                      SizedBox(width: 40), // Spacer between icons
+
+                      // Share Icon
+                      IconButton(
+                        icon: Icon(Icons.share, size: 40, color: Colors.white),
+                        onPressed: () {
+                          if (_lastCapturedImagePath != null) {
+                            Share.shareXFiles([XFile(_lastCapturedImagePath!)]); // Correct method and type for sharing files
+                          } else {
+                            print("No image to share");
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ],
             );
           } else {
             return const Center(child: CircularProgressIndicator());
           }
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          try {
-            await _initializeControllerFuture;
-            final image = await _controller.takePicture();
-            String savedImagePath = await _saveImageWithOverlay(image.path);
-
-            if (savedImagePath.isNotEmpty) {
-              if (!mounted) return;
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => DisplayPictureScreen(imagePath: savedImagePath),
-                ),
-              );
-            }
-          } catch (e) {
-            print(e);
-          }
-        },
-        child: const Icon(Icons.camera_alt),
       ),
     );
   }
