@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data'; // Add this import for ByteData
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart'; // Add geocoding package
 import 'package:flutter/rendering.dart';
 
 class CameraPage extends StatefulWidget {
@@ -21,12 +22,15 @@ class _CameraPageState extends State<CameraPage> {
   CameraDescription? selectedCamera;
   List<String> _imagePaths = [];
   GlobalKey _imageKey = GlobalKey(); // Global key to capture the image with overlay
+  Position? _currentPosition;
+  String _locationMessage = "Fetching location...";
 
   @override
   void initState() {
     super.initState();
     _initCamera();
     _loadSavedImages();
+    _getCurrentLocation();
   }
 
   // Initialize the camera
@@ -58,26 +62,53 @@ class _CameraPageState extends State<CameraPage> {
     await prefs.setStringList('imagePaths', _imagePaths);
   }
 
-  // Function to get the current location
-  Future<Position?> _getCurrentLocation() async {
+  // Get the current location with proper permissions and convert it to an address
+  Future<void> _getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      return null;
+      setState(() {
+        _locationMessage = "Location services are disabled.";
+      });
+      return;
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        return null;
+        setState(() {
+          _locationMessage = "Location permissions are denied.";
+        });
+        return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      return null;
+      setState(() {
+        _locationMessage = "Location permissions are permanently denied.";
+      });
+      return;
     }
 
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    // Get the current position
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    setState(() {
+      _currentPosition = position;
+    });
+
+    // Convert lat/long to an address using reverse geocoding
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      Placemark place = placemarks[0];
+
+      setState(() {
+        _locationMessage = "${place.street}, ${place.locality}, ${place.postalCode}, ${place.country}";
+      });
+    } catch (e) {
+      setState(() {
+        _locationMessage = "Error getting address: $e";
+      });
+    }
   }
 
   // Function to capture and save the image with overlay
@@ -86,10 +117,9 @@ class _CameraPageState extends State<CameraPage> {
       final directory = await getApplicationDocumentsDirectory();
       String newPath = path.join(directory.path, '${DateTime.now().millisecondsSinceEpoch}.png');
 
-      // Create a widget that shows the image with the text overlay
       RenderRepaintBoundary boundary = _imageKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       var image = await boundary.toImage(pixelRatio: 3.0);
-      Uint8List? byteData = (await image.toByteData(format: ImageByteFormat.png))?.buffer.asUint8List(); // Use Uint8List to avoid ambiguity
+      Uint8List? byteData = (await image.toByteData(format: ImageByteFormat.png))?.buffer.asUint8List();
       if (byteData != null) {
         File(newPath).writeAsBytesSync(byteData);
       }
@@ -118,7 +148,7 @@ class _CameraPageState extends State<CameraPage> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
             return Stack(
-              key: _imageKey, // Assign key to the widget to capture the image with overlay
+              key: _imageKey,
               children: [
                 CameraPreview(_controller),
                 Positioned(
@@ -136,30 +166,13 @@ class _CameraPageState extends State<CameraPage> {
                 Positioned(
                   left: 10,
                   top: 40,
-                  child: FutureBuilder<Position?>(
-                    future: _getCurrentLocation(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        final position = snapshot.data!;
-                        return Text(
-                          "Lat: ${position.latitude}, Lng: ${position.longitude}",
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.white,
-                            backgroundColor: Colors.black,
-                          ),
-                        );
-                      } else {
-                        return Text(
-                          "Location: Unknown",
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.white,
-                            backgroundColor: Colors.black,
-                          ),
-                        );
-                      }
-                    },
+                  child: Text(
+                    _locationMessage,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
+                      backgroundColor: Colors.black,
+                    ),
                   ),
                 ),
               ],
