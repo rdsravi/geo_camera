@@ -9,8 +9,11 @@ class HomePage extends StatelessWidget {
         backgroundColor: Colors.deepPurpleAccent,
         elevation: 0,
       ),
-      body: PageView(
-        scrollDirection: Axis.vertical, // Makes the containers scroll vertically
+      body: GridView.count(
+        crossAxisCount: 2, // Set the number of columns in the grid
+        padding: EdgeInsets.all(10),
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
         children: [
           // Camera Button
           buildContainer(
@@ -67,9 +70,8 @@ class HomePage extends StatelessWidget {
       }) {
     return InkWell(
       onTap: onTap,
-      splashColor: gradientColors[0].withOpacity(0.4),
+      splashColor: gradientColors[0].withOpacity(1),
       child: Container(
-        margin: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: gradientColors,
@@ -89,13 +91,13 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 80, color: Colors.white),
-            SizedBox(height: 20),
+            Icon(icon, size: 50, color: Colors.white), // Increase icon size
+            SizedBox(height: 10),
             Text(
               title,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 28,
+                fontSize: 16, // Increase font size
                 fontWeight: FontWeight.bold,
               ),
             ),
