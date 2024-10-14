@@ -5,7 +5,7 @@ import 'camera_page.dart';
 import 'splash_screen.dart';
 import 'login_page.dart';
 import 'home_page.dart';
-import 'attendance_page.dart';
+import 'attendance/attendance_page.dart';
 import 'leaves_page.dart';
 import 'working_site_page.dart';
 
@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
         '/camera': (context) => CameraPage(), // Implement the CameraPage here
         '/gallery': (context) => GalleryPage(imagePaths: []), // Pass imagePaths
         '/attendance': (context) => AttendancePage(), // Implement AttendancePage
-        '/calendar': (context) => CalenderPage(),
+        '/calendar': (context) => CalenderPage(attendanceList: [],),
         '/leaves': (context) => LeavesPage(), // Implement LeavesPage
         '/working_site': (context) => WorkingSitePage(), // Implement WorkingSitePage
       },

@@ -1,7 +1,14 @@
 import 'dart:async'; // For Timer
+import 'dart:io'; // For File
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For formatting date and time
-import 'package:geolocator/geolocator.dart'; // For fetching location
+import 'package:camera/camera.dart'; // For camera functionality
+import 'package:geo_camera/attendance/time_helper.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:path_provider/path_provider.dart'; // For saving files
+import 'package:path/path.dart';
+import 'package:geocoding/geocoding.dart'; // Import the geocoding package
+import '../calender_page.dart';
+import 'camera_helper.dart';
 
 class AttendancePage extends StatefulWidget {
   const AttendancePage({super.key});
@@ -15,12 +22,27 @@ class _AttendancePageState extends State<AttendancePage> {
   String _currentDate = '';
   String _currentLocation = 'Fetching location...';
   Timer? _timer;
+  CameraController? _controller;
+  List<CameraDescription> cameras = [];
+  String? imagePath; // To store the path of the captured image
+  bool isInTime = true; // Track if it's IN TIME or OUT TIME
+
+  // Attendance List to store attendance data
+  List<Event> attendanceList = []; // New attendance list
 
   @override
   void initState() {
     super.initState();
     _updateTime();
     _fetchCurrentLocation();
+    _initializeCamera();
+  }
+
+  // Initialize the camera
+  Future<void> _initializeCamera() async {
+    cameras = await availableCameras();
+    _controller = await initializeCamera(cameras);
+    setState(() {});
   }
 
   // Update the time every second
@@ -28,54 +50,89 @@ class _AttendancePageState extends State<AttendancePage> {
     _timer = Timer.periodic(Duration(seconds: 1), (Timer t) {
       final DateTime now = DateTime.now();
       setState(() {
-        _currentTime = DateFormat('hh:mm a').format(now);
-        _currentDate = DateFormat('EEEE, MMM d').format(now);
+        _currentTime = formatTime(now); // Use the helper function
+        _currentDate = formatDate(now); // Use the helper function
       });
     });
   }
 
-  // Fetch current location using geolocator package
+
+// Fetch current location using geolocator package
   Future<void> _fetchCurrentLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    // Request location permission
+    LocationPermission permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
 
-    // Check if location services are enabled
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      setState(() {
-        _currentLocation = 'Location services are disabled.';
-      });
-      return;
-    }
+      // Use the latitude and longitude from the position
+      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
 
-    // Check for permission
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever) {
+      if (placemarks.isNotEmpty) {
+        Placemark placemark = placemarks[0];
         setState(() {
-          _currentLocation = 'Location permissions are permanently denied.';
+          // Build the full address from available components
+          _currentLocation = "${placemark.name}, ${placemark.street}, ${placemark.locality}, "
+              "${placemark.administrativeArea}, ${placemark.postalCode}, ${placemark.country}";
         });
-        return;
-      } else if (permission == LocationPermission.denied) {
+      } else {
         setState(() {
-          _currentLocation = 'Location permissions are denied.';
+          _currentLocation = "Unable to fetch address";
         });
-        return;
       }
+    } else {
+      setState(() {
+        _currentLocation = "Location permission denied";
+      });
     }
+  }
 
-    // Get the current position
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    setState(() {
-      _currentLocation =
-      'Lat: ${position.latitude}, Long: ${position.longitude}';
-    });
+
+
+  // Capture the image
+  Future<void> _captureImage() async {
+    if (_controller == null) return;
+
+    try {
+      // Capture the image
+      final image = await _controller!.takePicture();
+
+      // Get the temporary directory to save the image
+      final directory = await getTemporaryDirectory();
+      final imagePath = join(directory.path, 'attendance_${DateTime.now()}.png');
+
+      // Save the image file
+      await File(image.path).copy(imagePath);
+
+      // Update state with the captured image path
+      setState(() {
+        this.imagePath = imagePath;
+        isInTime = false; // Change to OUT TIME after capturing
+      });
+
+      // Save attendance data with the current date
+      String attendanceTitle = isInTime ? 'In Time' : 'Out Time';
+      attendanceList.add(Event(
+        attendanceTitle,
+        imagePath: imagePath,
+        time: _currentTime,
+        location: _currentLocation,
+        date: DateTime.now(), // Save the current date
+      ));
+
+      // Print additional data
+      print('Image saved at: $imagePath');
+      print('Time: $_currentTime');
+      print('Date: $_currentDate');
+      print('Location: $_currentLocation');
+    } catch (e) {
+      print('Error capturing image: $e');
+    }
   }
 
   @override
   void dispose() {
+    _controller?.dispose(); // Dispose the camera controller
     _timer?.cancel(); // Stop the timer when widget is disposed
     super.dispose();
   }
@@ -114,7 +171,7 @@ class _AttendancePageState extends State<AttendancePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Lorem Ipsum Dolor Sit',
+                        'Full Name',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -122,7 +179,7 @@ class _AttendancePageState extends State<AttendancePage> {
                         ),
                       ),
                       Text(
-                        'Consequatur Elit.',
+                        'Worker type',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -134,18 +191,13 @@ class _AttendancePageState extends State<AttendancePage> {
               ),
             ),
             SizedBox(height: 20),
-            // Map placeholder (you can use GoogleMap widget here)
-            Container(
+            // Camera Preview Section
+            _controller == null
+                ? Center(child: CircularProgressIndicator())
+                : Container(
               height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(
-                  image: NetworkImage(
-                    'https://via.placeholder.com/400x200', // Replace with map image or widget
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
+              width: double.infinity,
+              child: CameraPreview(_controller!),
             ),
             SizedBox(height: 20),
             // Time Section
@@ -183,7 +235,7 @@ class _AttendancePageState extends State<AttendancePage> {
                 Column(
                   children: [
                     Text(
-                      'IN TIME',
+                      isInTime ? 'IN TIME' : 'OUT TIME',
                       style: TextStyle(
                         color: Colors.black54,
                         fontSize: 16,
@@ -211,7 +263,7 @@ class _AttendancePageState extends State<AttendancePage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      '00:00 am', // Replace this with the actual out-time value
+                      isInTime ? 'N/A' : _currentTime, // Replace this with the actual out-time value
                       style: TextStyle(
                         color: Colors.black87,
                         fontSize: 18,
@@ -226,16 +278,17 @@ class _AttendancePageState extends State<AttendancePage> {
             // In Time Button
             ElevatedButton(
               onPressed: () {
-                // Handle IN TIME logic here
+                _captureImage(); // Capture image when button is pressed
               },
               style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 64), backgroundColor: Colors.deepPurpleAccent,
+                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 64),
+                backgroundColor: Colors.deepPurpleAccent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ), // Button background color
               ),
               child: Text(
-                'IN TIME',
+                isInTime ? 'IN TIME' : 'OUT TIME', // Change button text
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.white,
@@ -243,25 +296,21 @@ class _AttendancePageState extends State<AttendancePage> {
               ),
             ),
             Spacer(),
-            // Bottom Navigation Bar Placeholder
-            // BottomNavigationBar(
-            //   currentIndex: 0, // set the index for the active item
-            //   items: [
-            //     BottomNavigationBarItem(
-            //       icon: Icon(Icons.home),
-            //       label: 'Home',
-            //     ),
-            //     BottomNavigationBarItem(
-            //       icon: Icon(Icons.access_time),
-            //       label: 'Attendance',
-            //     ),
-            //     BottomNavigationBarItem(
-            //       icon: Icon(Icons.settings),
-            //       label: 'Settings',
-            //     ),
-            //   ],
-            //   selectedItemColor: Colors.deepPurpleAccent,
-            // ),
+
+            // Calendar Button
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CalenderPage(attendanceList: attendanceList), // Pass the attendance list
+                    ),
+                  );
+                },
+                child: Text('Calendar'),
+              ),
+            ),
           ],
         ),
       ),

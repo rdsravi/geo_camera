@@ -1,9 +1,26 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'dart:collection';
+
+// Event model to include additional data
+class Event {
+  final String title; // Title for the event (e.g., "In Time" or "Out Time")
+  final String imagePath; // To store image path
+  final String time; // Store time
+  final String location; // Store location
+  final DateTime date; // Store the event date
+
+  Event(this.title, {required this.imagePath, required this.time, required this.location, required this.date});
+
+  @override
+  String toString() => title;
+}
 
 class CalenderPage extends StatefulWidget {
-  const CalenderPage({Key? key}) : super(key: key);
+  final List<Event> attendanceList; // Pass attendance data from AttendancePage
+
+  const CalenderPage({Key? key, required this.attendanceList}) : super(key: key);
 
   @override
   _CalenderPageState createState() => _CalenderPageState();
@@ -14,18 +31,29 @@ class _CalenderPageState extends State<CalenderPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  final Map<DateTime, List<Event>> _events = {
-    DateTime.utc(2024, 10, 15): [Event('Event 1')],
-    DateTime.utc(2024, 10, 17): [Event('Event 2')],
-    DateTime.utc(2024, 10, 21): [Event('Event 3')],
-  };
+  final Map<DateTime, List<Event>> _events = {};
 
   @override
   void initState() {
     super.initState();
 
+    // Initialize the selected day and events
     _selectedDay = _focusedDay;
     _selectedEvents = ValueNotifier(_getEventsForDay(_selectedDay!));
+
+    // Load attendance data into events map
+    _loadAttendanceData();
+  }
+
+  void _loadAttendanceData() {
+    for (var attendance in widget.attendanceList) {
+      // Use the date from the Event instance directly
+      DateTime date = attendance.date;
+      if (_events[date] == null) {
+        _events[date] = [];
+      }
+      _events[date]!.add(attendance);
+    }
   }
 
   @override
@@ -38,22 +66,11 @@ class _CalenderPageState extends State<CalenderPage> {
     return _events[day] ?? [];
   }
 
-  List<Event> _getEventsForRange(DateTime start, DateTime end) {
-    final days = List.generate(
-      end.difference(start).inDays + 1,
-          (index) => DateTime.utc(start.year, start.month, start.day + index),
-    );
-
-    return [
-      for (final day in days) ..._getEventsForDay(day),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Calendar'),
+        title: Text('Attendance Calendar'),
         backgroundColor: Colors.deepPurpleAccent,
       ),
       body: Column(
@@ -131,6 +148,15 @@ class _CalenderPageState extends State<CalenderPage> {
                   itemBuilder: (context, index) {
                     return ListTile(
                       title: Text(value[index].title),
+                      subtitle: Text('Time: ${value[index].time}\nLocation: ${value[index].location}'),
+                      leading: value[index].imagePath.isNotEmpty
+                          ? Image.file(
+                        File(value[index].imagePath),
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      )
+                          : null, // Show image if available
                     );
                   },
                 );
@@ -141,13 +167,4 @@ class _CalenderPageState extends State<CalenderPage> {
       ),
     );
   }
-}
-
-class Event {
-  final String title;
-
-  Event(this.title);
-
-  @override
-  String toString() => title;
 }
