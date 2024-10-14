@@ -3,25 +3,58 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class GalleryPage extends StatefulWidget {
+  final List<String> imagePaths;
+
+  const GalleryPage({Key? key, required this.imagePaths}) : super(key: key);
+
   @override
   _GalleryPageState createState() => _GalleryPageState();
 }
 
 class _GalleryPageState extends State<GalleryPage> {
-  List<String> _imagePaths = [];
+  late List<String> _imagePaths;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedImages();
+    _imagePaths = widget.imagePaths; // Use the passed imagePaths
   }
 
-  // Load saved images from shared preferences
-  Future<void> _loadSavedImages() async {
+  Future<void> _deleteImage(int index) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      _imagePaths = prefs.getStringList('imagePaths') ?? [];
+      File(_imagePaths[index]).deleteSync(); // Delete the file
+      _imagePaths.removeAt(index); // Remove the path from the list
     });
+    await prefs.setStringList('imagePaths', _imagePaths); // Update preferences
+  }
+
+  Future<void> _confirmDelete(int index) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Image'),
+          content: const Text('Are you sure you want to delete this image?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+            TextButton(
+              child: const Text('Delete'),
+              onPressed: () {
+                _deleteImage(index); // Delete the image
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -46,6 +79,7 @@ class _GalleryPageState extends State<GalleryPage> {
                 ),
               );
             },
+            onLongPress: () => _confirmDelete(index), // Confirm before deletion
             child: Image.file(
               File(_imagePaths[index]),
               fit: BoxFit.cover,

@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginPage(),
         '/home': (context) => HomePage(),
         '/camera': (context) => CameraPage(), // Implement this if you want a separate camera page
-        '/gallery': (context) => GalleryPage(),
+        '/gallery': (context) => GalleryPage(imagePaths: [],),
       },
     );
   }
