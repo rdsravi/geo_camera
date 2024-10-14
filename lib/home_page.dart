@@ -39,10 +39,10 @@ class HomePage extends StatelessWidget {
           buildContainer(
             context,
             onTap: () {
-              Navigator.of(context).pushNamed('/leave');
+              Navigator.of(context).pushNamed('/calendar');
             },
             icon: Icons.date_range,
-            title: 'Leave',
+            title: 'Calendar',
             gradientColors: [Colors.redAccent, Colors.deepOrange],
           ),
           // Gallery Button
@@ -54,6 +54,26 @@ class HomePage extends StatelessWidget {
             icon: Icons.photo_library,
             title: 'Gallery',
             gradientColors: [Colors.purpleAccent, Colors.deepPurple],
+          ),
+          // Leaves Button
+          buildContainer(
+            context,
+            onTap: () {
+              Navigator.of(context).pushNamed('/leaves');
+            },
+            icon: Icons.nature_people,
+            title: 'Leaves',
+            gradientColors: [Colors.lightGreen, Colors.green],
+          ),
+          // My Working Site Button
+          buildContainer(
+            context,
+            onTap: () {
+              Navigator.of(context).pushNamed('/working_site');
+            },
+            icon: Icons.location_on,
+            title: 'My Working Site',
+            gradientColors: [Colors.blueAccent, Colors.blue],
           ),
         ],
       ),
@@ -91,13 +111,13 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 50, color: Colors.white), // Increase icon size
+            Icon(icon, size: 50, color: Colors.white), // Icon with size increased
             SizedBox(height: 10),
             Text(
               title,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 16, // Increase font size
+                fontSize: 16, // Font size increased
                 fontWeight: FontWeight.bold,
               ),
             ),
