@@ -6,7 +6,7 @@ import 'splash_screen.dart';
 import 'login_page.dart';
 import 'home_page.dart';
 import 'attendance/attendance_page.dart';
-import 'leaves_page.dart';
+import 'leaves/leaves_page.dart';
 import 'working_site_page.dart';
 
 void main() {
